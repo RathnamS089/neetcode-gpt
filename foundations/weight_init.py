@@ -1,41 +1,56 @@
-import torch
-import torch.nn as nn
 import math
-
+import torch
+import numpy as np
+from typing import List
 
 class Solution:
 
-    def xavier_init(self, fan_in: int, fan_out: int) -> list[list[float]]:
+    def xavier_init(self, fan_in: int, fan_out: int) -> List[List[float]]:
         torch.manual_seed(0)
-        std = math.sqrt(2.0 / (fan_in + fan_out))
+        std = np.sqrt(2 / (fan_in + fan_out))
         weights = torch.randn(fan_out, fan_in) * std
-        return torch.round(weights, decimals=4).tolist()
+        weights = torch.round(weights, decimals=4)
+        return weights.tolist()
 
-    def kaiming_init(self, fan_in: int, fan_out: int) -> list[list[float]]:
+    def kaiming_init(self, fan_in: int, fan_out: int) -> List[List[float]]:
         torch.manual_seed(0)
-        std = math.sqrt(2.0 / fan_in)
+        std = np.sqrt(2 / fan_in)
         weights = torch.randn(fan_out, fan_in) * std
-        return torch.round(weights, decimals=4).tolist()
+        weights = torch.round(weights, decimals=4)
+        return weights.tolist()
 
-    def check_activations(self, num_layers: int, input_dim: int, hidden_dim: int, init_type: str) -> list[float]:
+    def check_activations(self, num_layers: int, input_dim: int, hidden_dim: int, init_type: str) -> List[float]:
         torch.manual_seed(0)
-        dims = [input_dim] + [hidden_dim] * num_layers
-        weights = []
+        listoact = []
+        weights_list = []
+        
+        # --- PHASE 1: Generate all weights using your dimension tracking logic ---
         for i in range(num_layers):
-            if init_type == 'xavier':
-                std = math.sqrt(2.0 / (dims[i] + dims[i + 1]))
-            elif init_type == 'kaiming':
-                std = math.sqrt(2.0 / dims[i])
+            if i == 0:
+                current = input_dim
+                
+            if init_type == "xavier":
+                std = math.sqrt(2.0 / (current + hidden_dim))
+            elif init_type == "kaiming":
+                std = math.sqrt(2.0 / current)
             else:
                 std = 1.0
-            w = torch.randn(dims[i + 1], dims[i]) * std
-            weights.append(w)
+                
+            w1 = torch.randn(hidden_dim, current) * std
+            weights_list.append(w1)
+            current = hidden_dim
 
+        # --- PHASE 2: Generate input and compute activations sequentially ---
         x = torch.randn(1, input_dim)
-        stds = []
-        for w in weights:
-            x = x @ w.T
-            x = torch.relu(x)
-            stds.append(round(x.std().item(), 2))
+        
+        for w1 in weights_list:
+            z = x @ w1.T
+            zact=torch.relu(z)
+            
+       
+                
+            listoact.append(zact.std().item())
+            x = zact
+            
+        return [round(value, 2) for value in listoact]
 
-        return stds
